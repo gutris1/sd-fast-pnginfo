@@ -32,5 +32,5 @@ Support:
 <h1 align="center">Preview</h1>
 <p align="center">
   <img src="https://github.com/gutris1/sd-fast-pnginfo/assets/132797949/55e70a0b-35e7-40d3-8397-398941f36fd9" width="800">
-  <img src="https://github.com/gutris1/sd-fast-pnginfo/assets/132797949/02852cac-6517-42bb-ba4e-d54277bce894">
+  <img src="https://github.com/gutris1/sd-fast-pnginfo/assets/132797949/562eb02e-5ff5-4353-bc88-2f2196a3f6d1" width="800">
 </p>

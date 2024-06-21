@@ -1,65 +1,7 @@
-fastpnginfo_loaded = false;
-ExifReader = null;
-
-async function load_fastpnginfo(txt_output_el) {
-  if (ExifReader == null) {
-    let paths = gradioApp().querySelector("#fastpng_js_path");
-    const scripts = paths.textContent.trim().split("\n");
-    scripts.shift();
-    const df = document.createDocumentFragment();
-
-    for (let src of scripts) {
-      const script = document.createElement("script");
-      script.async = true;
-      script.type = "module";
-      script.src = `file=${src}`;
-      df.appendChild(script);
-    }
-
-    txt_output_el.appendChild(df);
-    await import(`/file=${scripts[0]}`);
-    fastpnginfo_loaded = true;
-  }
-}
-
-fastpngprocess = function () {};
-
-function round(v) { return Math.round(v * 10000) / 10000 }
-
-function convertNAI(input) {
-  const re_attention = /\{|\[|\}|\]|[^\{\}\[\]]+/gmu;
-  let text = input.replaceAll("(", "\(").replaceAll(")", "\)").replace(/\\{2,}(\(|\))/gim, '\$1');
-  let res = [], curly_brackets = [], square_brackets = [];
-  const curly_bracket_multiplier = 1.05, square_bracket_multiplier = 1 / 1.05;
-  function multiply_range(start, multiplier) {
-    for (let pos = start; pos < res.length; pos++) res[pos][1] = round(res[pos][1] * multiplier);
-  }
-  for (const match of text.matchAll(re_attention)) {
-    let word = match[0];
-    if (word == "{") curly_brackets.push(res.length);
-    else if (word == "[") square_brackets.push(res.length);
-    else if (word == "}" && curly_brackets.length > 0) multiply_range(curly_brackets.pop(), curly_bracket_multiplier);
-    else if (word == "]" && square_brackets.length > 0) multiply_range(square_brackets.pop(), square_bracket_multiplier);
-    else res.push([word, 1.0]);
-  }
-  for (const pos of curly_brackets) multiply_range(pos, curly_bracket_multiplier);
-  for (const pos of square_brackets) multiply_range(pos, square_bracket_multiplier);
-  if (res.length == 0) res = [["", 1.0]];
-  let i = 0;
-  while (i + 1 < res.length) {
-    if (res[i][1] == res[i + 1][1]) {
-      res[i][0] += res[i + 1][0];
-      res.splice(i + 1, 1);
-    } else i++;
-  }
-  
-  let result = "";
-  for (let i = 0; i < res.length; i++) {
-    if (res[i][1] == 1.0) result += res[i][0];
-    else result += `(${res[i][0]}:${res[i][1]})`;
-  }
-  return result;
-}
+fastPNGProcess = function () {
+  document.querySelector("#fastpnginfo_submit").click();
+  document.querySelector("#fastpnginfo_geninfo").style.visibility = "visible";
+};
 
 onUiLoaded(async function () {
   const app = gradioApp();
@@ -73,11 +15,8 @@ onUiLoaded(async function () {
 
   img_input_el.addEventListener("change", fastpnginfo_process_image);
 
-  await load_fastpnginfo(txt_output_el);
-
   submit_el.addEventListener("click", async function () {
     let img_el = app.querySelector("#fastpnginfo_image > div[data-testid='image'] > div > img");
-
     try {
       let response = await fetch(img_el.src);
       let img_blob = await response.blob();
@@ -155,3 +94,63 @@ onUiLoaded(async function () {
     await new Promise(r => setTimeout(r, 100));
   }
 });
+
+function round(v) { return Math.round(v * 10000) / 10000 }
+
+function convertNAI(input) {
+  const re_attention = /\{|\[|\}|\]|[^\{\}\[\]]+/gmu;
+  let text = input.replaceAll("(", "\(").replaceAll(")", "\)").replace(/\\{2,}(\(|\))/gim, '\$1');
+  let res = [], curly_brackets = [], square_brackets = [];
+  const curly_bracket_multiplier = 1.05, square_bracket_multiplier = 1 / 1.05;
+  function multiply_range(start, multiplier) {
+    for (let pos = start; pos < res.length; pos++) res[pos][1] = round(res[pos][1] * multiplier);
+  }
+  for (const match of text.matchAll(re_attention)) {
+    let word = match[0];
+    if (word == "{") curly_brackets.push(res.length);
+    else if (word == "[") square_brackets.push(res.length);
+    else if (word == "}" && curly_brackets.length > 0) multiply_range(curly_brackets.pop(), curly_bracket_multiplier);
+    else if (word == "]" && square_brackets.length > 0) multiply_range(square_brackets.pop(), square_bracket_multiplier);
+    else res.push([word, 1.0]);
+  }
+  for (const pos of curly_brackets) multiply_range(pos, curly_bracket_multiplier);
+  for (const pos of square_brackets) multiply_range(pos, square_bracket_multiplier);
+  if (res.length == 0) res = [["", 1.0]];
+  let i = 0;
+  while (i + 1 < res.length) {
+    if (res[i][1] == res[i + 1][1]) {
+      res[i][0] += res[i + 1][0];
+      res.splice(i + 1, 1);
+    } else i++;
+  }
+  
+  let result = "";
+  for (let i = 0; i < res.length; i++) {
+    if (res[i][1] == 1.0) result += res[i][0];
+    else result += `(${res[i][0]}:${res[i][1]})`;
+  }
+  return result;
+}
+
+function plainTextToHTML(inputs) {
+  var box = document.querySelector("#fastpnginfo_panel");
+  var pr = `<b style="display: block; margin-bottom: 4px;">Prompt</b>`;
+  var np = `<b style="display: block; margin-top: 15px; margin-bottom: 4px;">Negative Prompt</b>`;
+  var pm = `<b style="display: block; margin-top: 15px; margin-bottom: 4px;">Params</b>`;
+  var br = /\n/g;
+
+  if (inputs === undefined || inputs === null || inputs.trim() === '') {
+    box.style.opacity = '0';
+
+  } else {
+    if (inputs.includes("Nothing To See Here")) {
+      pr = '';
+    }
+
+    box.style.opacity = '1';
+    inputs = inputs.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(br, '<br>');
+    inputs = inputs.replace(/Negative prompt:/, np).replace(/Steps:/, match => pm + match);                                
+  }
+
+  return `<div style="padding: 5px;">${pr}<p>${inputs}</p></div>`;
+}
